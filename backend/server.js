@@ -12,12 +12,12 @@ app.use(express.json());
 
 const SECRET = "mysecretkey";
 
-// ================== DB CONNECTION ==================
+// ================== DB CONNECTION (DIRECT STRICT INTERNET FIX) ==================
 mongoose.connect(
-  "mongodb+srv://chatterjeeashmita25_db_user:2De8zRZAJJvUUVC4@cluster0.volomoo.mongodb.net/habitDB?retryWrites=true&w=majority"
+  "mongodb://chatterjeeashmita25_db_user:2De8zRZAJJvUUVC4@cluster0-shard-00-00.volomoo.mongodb.net:27017,cluster0-shard-00-01.volomoo.mongodb.net:27017,cluster0-shard-00-02.volomoo.mongodb.net:27017/habitDB?ssl=true&replicaSet=atlas-m4v00b-shard-0&authSource=admin&retryWrites=true&w=majority"
 )
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.log(err));
+  .then(() => console.log("MongoDB connected successfully ✅"))
+  .catch(err => console.log("MongoDB connection error ❌:", err));
 
 // ================== USER AUTH ==================
 
@@ -26,8 +26,14 @@ app.post("/signup", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Please fill all fields: name, email, password" });
+    }
+
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ error: "User already exists" });
+    if (existingUser) {
+      return res.status(400).json({ error: "This email is already registered! Please Login." });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -40,7 +46,8 @@ app.post("/signup", async (req, res) => {
     await user.save();
     res.json({ message: "Signup successful" });
   } catch (err) {
-    res.status(500).json({ error: "Error signing up" });
+    console.error("Signup Database Error:", err);
+    res.status(500).json({ error: `Database Error: ${err.message}` });
   }
 });
 
@@ -55,7 +62,6 @@ app.post("/login", async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: "Wrong password" });
 
-    // 🔥 UPDATE LAST LOGIN
     user.lastLogin = new Date();
     await user.save();
 
@@ -76,7 +82,6 @@ app.post("/logout", async (req, res) => {
     const user = await User.findById(verified.id);
     if (!user) return res.status(400).json({ error: "User not found" });
 
-    // 🔥 UPDATE LAST LOGOUT
     user.lastLogout = new Date();
     await user.save();
 
@@ -102,7 +107,6 @@ const authMiddleware = (req, res, next) => {
 
 // ================== PROFILE ROUTES ==================
 
-// GET PROFILE
 app.get("/profile", authMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
@@ -112,7 +116,6 @@ app.get("/profile", authMiddleware, async (req, res) => {
   }
 });
 
-// UPDATE PROFILE PIC
 app.post("/upload-profile-pic", authMiddleware, async (req, res) => {
   try {
     const { image } = req.body;
@@ -127,7 +130,6 @@ app.post("/upload-profile-pic", authMiddleware, async (req, res) => {
   }
 });
 
-// UPDATE BIO
 app.post("/update-bio", authMiddleware, async (req, res) => {
   try {
     const { bio } = req.body;
@@ -153,25 +155,21 @@ const habitSchema = new mongoose.Schema({
 
 const Habit = mongoose.model("Habit", habitSchema);
 
-// DATE FORMAT
 const formatDate = (date) => new Date(date).toISOString().slice(0, 10);
 
 // ================== HABIT ROUTES ==================
 
-// GET HABITS
 app.get("/", authMiddleware, async (req, res) => {
   const habits = await Habit.find({ userId: req.user.id });
   res.send(habits);
 });
 
-// ADD HABIT
 app.post("/add", authMiddleware, async (req, res) => {
   const habit = new Habit({ name: req.body.name, userId: req.user.id });
   await habit.save();
   res.send(habit);
 });
 
-// COMPLETE HABIT
 app.post("/complete/:id", authMiddleware, async (req, res) => {
   const habit = await Habit.findById(req.params.id);
   const today = formatDate(new Date());
@@ -187,11 +185,11 @@ app.post("/complete/:id", authMiddleware, async (req, res) => {
   res.send(habit);
 });
 
-// DELETE HABIT
 app.delete("/delete/:id", authMiddleware, async (req, res) => {
   await Habit.findByIdAndDelete(req.params.id);
   res.send({ message: "Deleted" });
 });
 
-// ================== SERVER ==================
-app.listen(5000, () => console.log("Server running on port 5000"));
+// ================== LIVE SERVER PORT ==================
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
