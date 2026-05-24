@@ -7,14 +7,16 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  // 🔥 AUTOMATIC URL CONFIG (Local checking)
+  // 🔥 AUTOMATIC URL CONFIG (Aapka naya live Vercel URL yahan set kar diya hai)
   const API_URL = window.location.hostname === "localhost" 
     ? "http://localhost:5000" 
-    : "https://my-habit-backend.onrender.com"; // Jab hum live karenge toh yeh kaam aayega
+    : "https://habit-tracker-mu-ten-41.vercel.app"; 
 
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+    e.preventDefault(); // Page ko refresh hone se rokne ke liye
+    
     try {
-      const res = await axios.post(`${API_URL}/login`, {
+      const res = await axios.post(`${API_URL}/api/auth/login`, { // Route path ko sahi kiya
         email,
         password,
       });
@@ -27,7 +29,7 @@ const Login = () => {
       // ✅ go to dashboard
       navigate("/dashboard");
     } catch (err) {
-      alert(err.response?.data?.error || "Login failed ❌");
+      alert(err.response?.data?.message || err.response?.data?.error || "Login failed ❌");
     }
   };
 
@@ -39,18 +41,26 @@ const Login = () => {
     <div className="container center">
       <h1 className="heading-3d">Login</h1>
 
-      <input
-        placeholder="Email"
-        onChange={(e) => setEmail(e.target.value)}
-      />
+      {/* Inputs ko form tag mein wrap kiya taaki email check active ho sake */}
+      <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '300px' }}>
+        <input
+          type="email" // Email structure check active
+          placeholder="Email"
+          value={email}
+          required
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-      <input
-        type="password"
-        placeholder="Password"
-        onChange={(e) => setPassword(e.target.value)}
-      />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          required
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-      <button onClick={handleLogin}>Login</button>
+        <button type="submit">Login</button>
+      </form>
 
       <p>OR</p>
 
